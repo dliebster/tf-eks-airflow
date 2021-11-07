@@ -1,0 +1,97 @@
+# Helm common values
+
+serviceAccount:
+  name: airflow
+
+ingress:
+  enabled: true
+  web:
+    annotations:
+      nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+
+dags:
+  path: /usr/local/airflow/dags
+  git:
+    secret: git-secrets
+    repoHost: github.com
+    privateKeyName: id_rsa
+    gitSync:
+      enabled: true
+      refreshTime: 60 # In seconds
+      resources:
+        limits:
+          cpu: "50m"
+          memory: "128Mi"
+        requests:
+          cpu: "10m"
+          memory: "50Mi"
+  initContainer:
+    enabled: true
+    installRequirements: false
+
+airflow:
+  image:
+    repository: our_custom_repository/typeform/airflow
+    pullPolicy: Always
+  config:
+    AIRFLOW__CORE__DAGS_FOLDER: /usr/local/airflow/dags/src
+    AIRFLOW__CORE__COLORED_CONSOLE_LOG: 'False'
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'False'
+    AIRFLOW__WEBSERVER__AUTHENTICATE: 'True'
+    AIRFLOW__WEBSERVER__HIDE_PAUSED_DAGS_BY_DEFAULT: 'True'
+    AIRFLOW__WEBSERVER__AUTH_BACKEND: airflow.contrib.auth.backends.google_auth
+    AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: 'True'
+    AIRFLOW__GOOGLE__OAUTH_CALLBACK_ROUTE: /oauth2callback
+    AIRFLOW__GOOGLE__DOMAIN: yourcompany.com
+    AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'False'
+
+scheduler:
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+  securityContext:
+    fsGroup: 65534
+
+web:
+  initialDelaySeconds: '240'
+  resources:
+    limits:
+      cpu: "800m"
+      memory: "2Gi"
+    requests:
+      cpu: "50m"
+      memory: "512Mi"
+  securityContext:
+    fsGroup: 65534
+
+workers:
+  replicas: 2
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+    requests:
+      cpu: "1000m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 75
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 80
+  securityContext:
+    fsGroup: 65534
